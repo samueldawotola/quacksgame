@@ -7,6 +7,7 @@ public class WhiteToken extends Token {
     public int getValue() {
         return value;
     }
+    @Override
     public boolean isWhite() {
         return true;
     }
