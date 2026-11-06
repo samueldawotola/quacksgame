@@ -1,5 +1,5 @@
 public class BlackToken extends Token {
-    public BlackToken(int value) {
+    public BlackToken() {
         super("hawkmoth", "black", 1);
     }
     @Override
