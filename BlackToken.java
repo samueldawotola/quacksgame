@@ -1,18 +1,10 @@
 public class BlackToken extends Token {
-    private int value;
     public BlackToken(int value) {
-        super("hawkmoth", "black", value);
-        this.value=value;
-    }
-    public int getValue() {
-        return value;
-    }
-    public void compareBlackTokens(BlackToken other) {
-        
+        super("hawkmoth", "black", 1);
     }
     @Override
     public void endAction(Player p, Board b) {
-        Player left = b.getleftNeighbor(p);
+        Player left = b.getLeftNeighbor(p);
         Player right = b.getRightNeighbor(p);
         int myCount = p.getCauldron().countColor("black");
         int leftCount = left.getCauldron().countColor("black");

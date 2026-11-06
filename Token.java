@@ -1,6 +1,7 @@
 import java.util.*;
+import java.awt.*;
 
-public class Token implements Enlargeable{
+public class Token implements Enlargeable {
     private String name;
     private String color;
     private int value;
@@ -38,8 +39,8 @@ public class Token implements Enlargeable{
     public void onPlaced(Player p, Board b) {}
     public void endAction(Player p, Board b) {}
     public void draw(Graphics g, int x, int y){}; //waiting until front end is in progress to continue
-    public int getWidth(){} //waiting until front end is in progress to continue
-    public int getLength(){} //waiting until front end is in progress to continue
+    public int getWidth(){ return SIZE; } //waiting until front end is in progress to continue
+    public int getLength(){ return SIZE; } //waiting until front end is in progress to continue
     public String toString() {
         return name + " (" + color + ", " + value + ")";
     }

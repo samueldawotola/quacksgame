@@ -1,11 +1,6 @@
 public class YellowToken extends Token {
-    private int value;
     public YellowToken(int value) {
         super("mandrake", "yellow", value);
-        this.value=value;
-    }
-    public int getValue() {
-        return value;
     }
     @Override
     public int getLimitBonus(Cauldron c) {

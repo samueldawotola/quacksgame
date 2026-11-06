@@ -3,9 +3,6 @@ public class PurpleToken extends Token {
     public PurpleToken() {
         super("ghost's breath", "purple", 1);
     }
-    public int getValue() {
-        return 1;
-    }
     public void addPurpleToken(Player p, Cauldron c) {
         Iterator<Token> it = c.tokensOf("purple").iterator();
         while (it.hasNext()) {

@@ -1,12 +1,7 @@
 import java.util.*;
 public class GreenToken extends Token {
-    private int value;
     public GreenToken(int value) {
         super("garden spider", "green", value);
-        this.value=value;
-    }
-    public int getValue() {
-        return value;
     }
     public void addGreenToken(Cauldron c) {
         if (c.getWhiteTotal() == 7) {
