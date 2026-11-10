@@ -15,7 +15,7 @@ public class GreenToken extends Token {
         }
     }
     @Override
-    public void endAction(Player p, Board b) {
+    public void endAction(Player p, Card b) {
         addGreenToken(p.getCauldron());
     }
 }

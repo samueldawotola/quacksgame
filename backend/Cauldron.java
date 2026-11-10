@@ -3,6 +3,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 
+import src.token.Token;
+
 /*
  * Cauldron: one player's pot for one day. Every Player owns one Cauldron.
  *
@@ -250,7 +252,7 @@ public class Cauldron {
     // Board is passed in because it holds the PotSpaces, which know where each space is drawn.
     // [TODO] Droplet and rat stone are placeholder circles; replace when the front end starts.
     // [TODO] Token.draw() and PotSpace.draw() are still empty, so only the placeholders show.
-    public void draw(Graphics g, Board b) {
+    public void draw(Graphics g, Card b) {
         // Droplet (never drawn past the last space)
         PotSpace dropletSpace = b.getSpace(Math.min(dropletStart, LAST_SPACE));
         g.setColor(Color.YELLOW);

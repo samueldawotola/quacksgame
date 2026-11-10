@@ -26,7 +26,7 @@ public class PotSpace implements Enlargeable {
     public int getY() {
         return y;
     }
-    public void draw(Graphics g, int x, int y) {} //waitingf until front end is in progress to continue
+    public void draw(Graphics g, int x, int y) {} //waiting until front end is in progress to continue
     public int getWidth() { return 50; } //waiting until front end is in progress to continue
     public int getHeight() { return 50; } //waiting until front end is in progress to continue
 }

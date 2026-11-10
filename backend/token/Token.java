@@ -36,8 +36,8 @@ public class Token implements Enlargeable {
     public int getLimitBonus(Cauldron c) {
         return 0;
     }
-    public void onPlaced(Player p, Board b) {}
-    public void endAction(Player p, Board b) {}
+    public void onPlaced(Player p, Card b) {}
+    public void endAction(Player p, Card b) {}
     public void draw(Graphics g, int x, int y){}; //waiting until front end is in progress to continue
     public int getWidth(){ return SIZE; } //waiting until front end is in progress to continue
     public int getHeight(){ return SIZE; } //waiting until front end is in progress to continue

@@ -12,7 +12,7 @@ public class PurpleToken extends Token {
         }
     }
     @Override
-    public void endAction(Player p, Board b) {
+    public void endAction(Player p, Card b) {
         addPurpleToken(p, p.getCauldron());
     }
 }

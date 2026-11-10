@@ -3,7 +3,7 @@ public class BlackToken extends Token {
         super("hawkmoth", "black", 1);
     }
     @Override
-    public void endAction(Player p, Board b) {
+    public void endAction(Player p, Card b) {
         Player left = b.getLeftNeighbor(p);
         Player right = b.getRightNeighbor(p);
         int myCount = p.getCauldron().countColor("black");
