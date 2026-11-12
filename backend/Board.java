@@ -14,7 +14,10 @@ public class Board {
   public Board (ArrayList<Player> players) {
   }
 
+  // todo
   public void buildPot() {
+    for (int i = 0; i < 53; i++) {
+      PotSpace new ps = PotSpace(
   }
 
   public void buildFortuneDeck() {
