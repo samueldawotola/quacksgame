@@ -11,6 +11,8 @@ public class Board {
   private HashMap<String, Integer> chipStock; // maps a color to a value that represents the number of it left
   private HashSet<String> unlockedColors; // colors that the shop sells, with yellow added on day 2 and purple on day 3
 
+
+  // have to finish buildfortunedeck and buildpot
   public Board (ArrayList<Player> players) {
   }
 
@@ -20,7 +22,9 @@ public class Board {
       PotSpace new ps = PotSpace(
   }
 
+  // finish card class first
   public void buildFortuneDeck() {
+    for (int 
   }
 
   public Card drawFortune() {
