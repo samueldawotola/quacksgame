@@ -53,9 +53,13 @@ public class Board {
   public Player getRightNeighbor(Player p) {
   }
 
+  // returns the array list of player objects
   public ArrayList<Player> getPlayers() {
+    return players;
   }
 
+  // returns the current day
   public int getDay() {
+    return day;
   }
 }
