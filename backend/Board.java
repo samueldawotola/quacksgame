@@ -23,13 +23,17 @@ public class Board {
   public Card drawFortune() {
   }
 
+  // adds Card c to the discard deck
   public void discard(Card c) {
+    discardDeck.add(c);
   }
 
   public void nextDay() {
   }
 
+  // checks to see if game is over by checking if 9 days have been played 
   public boolean isGameOver() {
+    return day > MAX_DAYS;
   }
 
   public int getLeaderPoints() {
