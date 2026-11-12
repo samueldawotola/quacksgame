@@ -1,6 +1,8 @@
 import java.awt.*;
 
 public class Card {
+    private int WIDTH, HEIGHT; // width and height of card
+    
     private String name; // name of card
     private String description; // description of what the card does
     private boolean immediate; // true for purple cards, false for blue cards
@@ -33,6 +35,16 @@ public class Card {
         this.effectType = effectType;
         this.amount = amount;
         this.options = options;
+    }
+
+    // accesses the width of card
+    public int getWidth() {
+        return width;
+    }
+
+    // accesses the height of card
+    public int getHeight() {
+        return height;
     }
 
     // returns the name of the card
@@ -74,16 +86,40 @@ public class Card {
 
         // runs through each effect type, and then applies the effect
         switch (effectType) {
+            // moves droplet [amount] spaces
             case DROPLET:
                 b.moveDroplet(amount);
                 break;
-            case RUBY_FEWEST
-
-        
-
-        
+            // gives [amount] rubies to the player with fewest victory points
+            case RUBY_FEWEST:
+                b.giveRubiesToFewest(amount);
+                break;
+            // gives a token to plater with the fewest victory points
+            case TOKEN_FEWEST_POINTS:
+                b.giveTokenToFewestPoints(amount);
+                break;
+            // doubles the rat tails for current round
+            case DOUBLE_RATS:
+                r.setDoubleRats(true);
+                break;
+            // every player rolls the bonus die
+            case ROLL_ALL:
+                r.rollDieForAll();
+                break;
+            // draws [amount] tokens from bag and immediately resolve
+            case DRAW_CHIPS:
+                r.drawChipsEffect(amount);
+                break;
+            // triggers the UI for the player to pick from options
+            case CHOICE:
+                r.promptCardChoic(this);
+                break;
+            default:
+                break;
+        }
     }
 
+    
     // should probably build graphics class and frontend first
     public void draw(Graphics g, int x, int y) {
     }
