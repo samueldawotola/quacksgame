@@ -1,272 +1,232 @@
-import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
+import javax.imageio.ImageIO;
 
-/*
- * Cauldron: one player's pot for one day. Every Player owns one Cauldron.
- *
- * How it works:
- *   - Tokens are drawn from the Bag and placed here one at a time.
- *   - The first token goes its distance after the droplet (or the rat stone, if there is one).
- *     Every later token goes its distance after the previous token.
- *   - Distance = token value + move bonus (only red tokens have a bonus).
- *   - The scoring space is the space right after the last token.
- *   - If the white tokens add up to more than the explode limit, the pot explodes.
- *
- * Status markers used in the comments:
- *   [DONE]         already written
- *   [NOT WRITTEN]  does not exist yet; this file will not compile until it does
- *   [TODO]         unfinished work inside this file
- *
- * Needs from other classes:
- *   PotSpace and Token (with all color subclasses)   [DONE]
- *   Bag: add(Token)                                  [NOT WRITTEN]
- *   Board: getSpace(int) returning the PotSpace      [NOT WRITTEN]
- */
-public class Cauldron {
+public class Board {
+    private int day;
+    public static final int MAX_DAYS = 9;
+    private ArrayList<Player> players;
+    private int startPlayer;
+    private ArrayList<Card> fortuneDeck;
+    private ArrayList<Card> discardDeck;
+    private ArrayList<PotSpace> potSpaces;
+    private HashSet<Integer> ratTailSpaces;
+    private HashMap<String, int[]> shopPrices;
+    private HashMap<String, Integer> chipStock;
+    private HashSet<String> unlockedColors;
 
-    // ---------------- FIELDS ----------------
+    public Board(ArrayList<Player> players) {
+        this.players = players;
+        this.day = 1;
+        this.startPlayer = (int) (Math.random() * players.size());
+        this.fortuneDeck = new ArrayList<>();
+        this.discardDeck = new ArrayList<>();
+        this.potSpaces = new ArrayList<>();
+        this.ratTailSpaces = new HashSet<>();
+        this.shopPrices = new HashMap<>();
+        this.chipStock = new HashMap<>();
+        this.unlockedColors = new HashSet<>();
 
-    // Tokens placed today, in order. The last one is the most recently placed.
-    private ArrayList<Token> pot;
-
-    // Space the droplet is on. Starts at 0 and only moves forward.
-    private int dropletStart;
-
-    // How many spaces the rat stone is ahead of the droplet today (0 = no rat stone).
-    private int ratSteps;
-
-    // true = flask can be used; false = already used until it is refilled.
-    private boolean flaskFull;
-
-    // Extra white token limit from a blue fortune card (0 if none).
-    private int cardLimitBonus;
-
-    // Last space of the pot (the spoon space). The pot has spaces 0 to 53.
-    public static final int LAST_SPACE = 53;
-
-    // ---------------- CONSTRUCTOR ----------------
-
-    // Starts the game with an empty pot, droplet on 0, no rat stone, and a full flask.
-    public Cauldron() {
-        pot = new ArrayList<Token>();
-        dropletStart = 0;
-        ratSteps = 0;
-        flaskFull = true;
-        cardLimitBonus = 0;
+        buildPot();
+        buildRatTails();
+        buildShop();
+        buildFortuneDeck();
     }
 
-    // ---------------- PLACING TOKENS ----------------
+    private void buildPot() {
+        // 54 spaces (0 to 53). Spiral coordinates relative to a 360x360 cauldron panel.
+        int[] coinsTable = {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 15, 16, 16, 17,
+            17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 23, 24, 24, 25, 25, 26,
+            26, 27, 27, 28, 28, 29, 29, 30, 30, 31, 31, 32, 32, 33, 33, 35
+        };
+        int[] vpTable = {
+            0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4,
+            4, 4, 5, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9,
+            10, 10, 10, 11, 11, 11, 12, 12, 12, 13, 13, 13, 14, 14, 14, 15
+        };
+        HashSet<Integer> rubySpaces = new HashSet<>(Arrays.asList(
+            5, 9, 13, 16, 20, 24, 28, 30, 34, 36, 40, 42, 46, 50, 52
+        ));
 
-    // Places a token in the pot. Called by Round.drawChip() [NOT WRITTEN].
-    public void placeToken(Token t) {
-        // The move bonus is read BEFORE t is added, so a red token
-        // sees the previous token as the last one in the pot.
-        int distance = t.getValue() + t.getMoveBonus(this);
-
-        int space = lastSpace() + distance;
-        if (space > LAST_SPACE) {
-            space = LAST_SPACE;     // cannot go past the spoon space
+        double cx = 165.0;
+        double cy = 140.0;
+        for (int i = 0; i <= Cauldron.LAST_SPACE; i++) {
+            double progress = i / (double) Cauldron.LAST_SPACE;
+            double angle = progress * 4.2 * Math.PI;
+            double radius = 18.0 + progress * 115.0;
+            int sx = (int) (cx + Math.cos(angle) * radius) - 16;
+            int sy = (int) (cy + Math.sin(angle) * radius * 0.82) - 16;
+            potSpaces.add(new PotSpace(coinsTable[i], vpTable[i], rubySpaces.contains(i), sx, sy));
         }
-        t.setSpace(space);
-        pot.add(t);
     }
 
-    // The space the next token is measured from:
-    // the droplet (plus rat stone) if the pot is empty, otherwise the last token's space.
-    private int lastSpace() {
-        if (pot.isEmpty()) {
-            return dropletStart + ratSteps;
-        }
-        return pot.get(pot.size() - 1).getSpace();
+    private void buildRatTails() {
+        int[] tails = {1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34, 37, 40, 43, 46, 49};
+        for (int t : tails) ratTailSpaces.add(t);
     }
 
-    // The space this pot scores on. An explosion does NOT change it.
-    // Used by EndOfRound [NOT WRITTEN] for the bonus die, rubies, points, and coins.
-    public int getScoringSpace() {
-        int last = lastSpace();
-        if (last >= LAST_SPACE) {
-            return LAST_SPACE;      // reached the spoon space
-        }
-        return last + 1;
+    private void buildShop() {
+        shopPrices.put("Orange", new int[]{3});
+        shopPrices.put("Blue",   new int[]{4, 8, 14});
+        shopPrices.put("Red",    new int[]{5, 9, 15});
+        shopPrices.put("Yellow", new int[]{8, 12, 18});
+        shopPrices.put("Green",  new int[]{6, 11, 21});
+        shopPrices.put("Purple", new int[]{10});
+        shopPrices.put("Black",  new int[]{10});
+
+        chipStock.put("Orange1", 20);
+        chipStock.put("Blue1", 15); chipStock.put("Blue2", 10); chipStock.put("Blue4", 10);
+        chipStock.put("Red1", 15);  chipStock.put("Red2", 10);  chipStock.put("Red4", 10);
+        chipStock.put("Yellow1", 15); chipStock.put("Yellow2", 10); chipStock.put("Yellow4", 10);
+        chipStock.put("Green1", 15); chipStock.put("Green2", 10); chipStock.put("Green4", 10);
+        chipStock.put("Purple1", 15);
+        chipStock.put("Black1", 18);
+
+        unlockedColors.addAll(Arrays.asList("Orange", "Blue", "Red", "Green", "Black"));
     }
 
-    // ---------------- EXPLOSION ----------------
-
-    // White token limit = 7 + fortune card bonus + the LARGEST token bonus in the pot.
-    // Only yellow tokens give a token bonus, and we use the largest so it never stacks.
-    public int getExplodeLimit() {
-        int largestBonus = 0;
-        Iterator<Token> it = pot.iterator();
-        while (it.hasNext()) {
-            int bonus = it.next().getLimitBonus(this);
-            if (bonus > largestBonus) {
-                largestBonus = bonus;
-            }
-        }
-        return 7 + cardLimitBonus + largestBonus;
-    }
-
-    // Adds up the value of the white tokens only.
-    public int getWhiteTotal() {
-        int total = 0;
-        Iterator<Token> it = pot.iterator();
-        while (it.hasNext()) {
-            Token t = it.next();
-            if (t.isWhite()) {
-                total += t.getValue();
-            }
-        }
-        return total;
-    }
-
-    // true if there are too many white tokens.
-    // Round checks this after every placement [NOT WRITTEN, Round.drawChip()].
-    public boolean isExploded() {
-        return getWhiteTotal() > getExplodeLimit();
-    }
-
-    // ---------------- FLASK ----------------
-
-    // Removes the last token if the flask is full, the pot has not exploded,
-    // and that token is white. Returns the token (Round puts it back in the bag),
-    // or null if the flask could not be used. Called by Round.useFlask() [NOT WRITTEN].
-    public Token useFlask() {
-        if (flaskFull && !pot.isEmpty() && !isExploded() && getLastToken().isWhite()) {
-            Token t = pot.remove(pot.size() - 1);
-            flaskFull = false;
-            return t;
-        }
+    private BufferedImage loadCardImg(String filename) {
+        try {
+            File f = new File(filename);
+            if (f.exists()) return ImageIO.read(f);
+        } catch (IOException ignored) {}
         return null;
     }
 
-    // ---------------- TOKEN ACTIONS ----------------
+    private void buildFortuneDeck() {
+        fortuneDeck.add(new Card("A Good Start", "Use your rat stone normally OR pass up 1-3 rat tails for rubies.", true, Card.CHOICE, 1, new String[]{"Use Rats Normally", "Trade Tails for Rubies"}, loadCardImg("FC-AGoodStart.png")));
+        fortuneDeck.add(new Card("A Second Chance", "Every player moves their droplet 1 space forward.", true, Card.DROPLET, 1, null, loadCardImg("FC-ASecondChance.png")));
+        fortuneDeck.add(new Card("An Opportunist Moment", "Players with the fewest rubies receive 1 ruby.", true, Card.RUBY_FEWEST, 1, null, loadCardImg("FC-AnOpportunistMoment.png")));
+        fortuneDeck.add(new Card("Beginner's Bonus", "Players with the fewest victory points receive a 1-chip.", true, Card.TOKEN_FEWEST_POINTS, 1, null, loadCardImg("FC-Beginner'sBonus.png")));
+        fortuneDeck.add(new Card("Charity", "Players with the fewest rubies receive 2 rubies.", true, Card.RUBY_FEWEST, 2, null, loadCardImg("FC-Charity.png")));
+        fortuneDeck.add(new Card("Choose Wisely", "Choose: move your droplet 2 spaces OR take 1 ruby.", true, Card.CHOICE, 2, new String[]{"Move Droplet +2", "Take 1 Ruby"}, loadCardImg("FC-ChooseWisely.png")));
+        fortuneDeck.add(new Card("It's Shining Extra Bright", "Reaching a ruby space gives 1 extra ruby.", false, Card.RUBY_SPACE_RUBY, 1, null, loadCardImg("FC-It'sShiningExtraBright.png")));
+        fortuneDeck.add(new Card("Just In Time", "All flasks refill for free at the end of the day.", false, Card.FLASK_REFILL, 1, null, loadCardImg("FC-JustInTime.png")));
+        fortuneDeck.add(new Card("Less Is More", "Draw 4 chips; lowest total gets 1 ruby.", true, Card.DRAW_CHIPS, 4, null, loadCardImg("FC-LessIsMore.png")));
+        fortuneDeck.add(new Card("Living In Luxury", "Reaching a ruby space awards 2 extra victory points.", false, Card.RUBY_SPACE_POINTS, 2, null, loadCardImg("FC-LivingInLuxury.png")));
+        fortuneDeck.add(new Card("Lucky Devil", "Players rolling the bonus die roll twice.", false, Card.ROLL_TWICE, 2, null, loadCardImg("FC-LuckyDevil.png")));
+        fortuneDeck.add(new Card("Magic Potion", "All flasks refill at the end of the day.", false, Card.FLASK_REFILL, 1, null, loadCardImg("FC-MagicPotion.png")));
+        fortuneDeck.add(new Card("Pumpkin Patch Party", "Every orange chip moves 1 extra space.", false, Card.ORANGE_BONUS, 1, null, loadCardImg("FC-PumpkinPatchParty.png")));
+        fortuneDeck.add(new Card("Rat Infestation", "Double every player's rat tails today.", true, Card.DOUBLE_RATS, 2, null, loadCardImg("FC-RatInfestation.png")));
+        fortuneDeck.add(new Card("Rats Are Your Friends", "Double every player's rat tails today.", true, Card.DOUBLE_RATS, 2, null, loadCardImg("FC-RatsAreYourFriends.png")));
+        fortuneDeck.add(new Card("Roll The Die", "Every player rolls the bonus die right now.", true, Card.ROLL_ALL, 1, null, loadCardImg("FC-RollTheDie.png")));
+        fortuneDeck.add(new Card("Schadenfreude", "Move droplet 1 space forward.", true, Card.DROPLET, 1, null, loadCardImg("FC-Schadenfreude.png")));
+        fortuneDeck.add(new Card("Seasoned Perfectly", "White total of exactly 7 moves droplet 1 space at end of day.", false, Card.EXACT_SEVEN, 1, null, loadCardImg("FC-SeasonedPerfectly.png")));
+        fortuneDeck.add(new Card("Strong Ingredient", "White chip explosion limit is raised by 2 today.", false, Card.RAISE_LIMIT, 2, null, loadCardImg("FC-StrongIngredient.png")));
+        fortuneDeck.add(new Card("The Pot Is Filling Up", "White chip explosion limit is raised by 1 today.", false, Card.RAISE_LIMIT, 1, null, loadCardImg("FC-ThePotIsFillingUp.png")));
+        fortuneDeck.add(new Card("The Pot Is Full", "White chip explosion limit is raised by 2 today.", false, Card.RAISE_LIMIT, 2, null, loadCardImg("FC-ThePotIsFull.png")));
+        fortuneDeck.add(new Card("Well Stirred", "Choose: refill flask OR take 1 ruby.", true, Card.CHOICE, 1, new String[]{"Refill Flask", "Take 1 Ruby"}, loadCardImg("FC-WellStirred.png")));
+        fortuneDeck.add(new Card("Wheel And Deal", "Choose: take 2 coins OR 1 ruby.", true, Card.CHOICE, 2, new String[]{"Take 2 Coins", "Take 1 Ruby"}, loadCardImg("FC-WheelAndDeal.png")));
+        fortuneDeck.add(new Card("You Only Get To Choose One", "Choose: move droplet 1 space OR draw a green 1-chip.", true, Card.CHOICE, 1, new String[]{"Move Droplet +1", "Gain Green 1-Chip"}, loadCardImg("FC-YouOnlyGetToChooseOne.png")));
+    }
 
-    // Moves the last token forward (used by GreenToken.endAction). Capped at the last space.
-    // This changes the scoring space, since it comes from the last token.
-    public void moveLastToken(int steps) {
-        if (pot.isEmpty()) {
-            return;
+    public Card drawFortune() {
+        if (fortuneDeck.isEmpty()) {
+            fortuneDeck.addAll(discardDeck);
+            discardDeck.clear();
         }
-        Token last = getLastToken();
-        int space = last.getSpace() + steps;
-        if (space > LAST_SPACE) {
-            space = LAST_SPACE;
-        }
-        last.setSpace(space);
+        int idx = (int) (Math.random() * fortuneDeck.size());
+        return fortuneDeck.remove(idx);
     }
 
-    // ---------------- SETTERS ----------------
-
-    // Set by Round.startRound() [NOT WRITTEN] each day, and back to 0 at the end of the day.
-    public void setRatSteps(int n) {
-        ratSteps = n;
+    public void discard(Card c) {
+        if (c != null) discardDeck.add(c);
     }
 
-    // Set by Round.startRound() [NOT WRITTEN] from a blue fortune card [Card NOT WRITTEN].
-    public void setCardLimitBonus(int n) {
-        cardLimitBonus = n;
-    }
-
-    // Used by EndOfRound.endOfTurn() [NOT WRITTEN] (2 rubies) and the flask-refill card.
-    public void fillFlask() {
-        flaskFull = true;
-    }
-
-    // Raises where the first token of the next day is placed. Used by BlackToken [DONE],
-    // and by EndOfRound and Card [NOT WRITTEN].
-    public void moveDroplet(int n) {
-        dropletStart += n;
-    }
-
-    // ---------------- LOOKUPS ----------------
-
-    // How many tokens of a color (like "green") are in the pot.
-    public int countColor(String color) {
-        int count = 0;
-        for (Token t : pot) {
-            if (t.getColor().equals(color)) {
-                count++;
+    public void nextDay() {
+        day++;
+        startPlayer = (startPlayer + 1) % players.size();
+        if (day == 2) unlockedColors.add("Yellow");
+        if (day == 3) unlockedColors.add("Purple");
+        if (day == 6) {
+            for (Player p : players) {
+                p.getBag().add(new WhiteToken(1));
             }
         }
-        return count;
     }
 
-    // Every token of one color in the pot.
-    public ArrayList<Token> tokensOf(String color) {
-        ArrayList<Token> list = new ArrayList<Token>();
-        for (Token t : pot) {
-            if (t.getColor().equals(color)) {
-                list.add(t);
+    public boolean isGameOver() { return day > MAX_DAYS; }
+
+    public int getLeaderPoints() {
+        int max = 0;
+        for (Player p : players) {
+            if (p.getVictoryPoints() > max) max = p.getVictoryPoints();
+        }
+        return max;
+    }
+
+    public int getRatTailSteps(Player p) {
+        if (day == 1) return 0;
+        int leaderPts = getLeaderPoints();
+        int myPts = p.getVictoryPoints();
+        if (myPts >= leaderPts) return 0;
+
+        int tails = 0;
+        for (int pos = myPts + 1; pos <= leaderPts; pos++) {
+            if (ratTailSpaces.contains(pos % 50)) {
+                tails++;
             }
         }
-        return list;
+        return tails;
     }
 
-    // The different colors in the pot, each listed once, so EndOfRound.chipActions()
-    // [NOT WRITTEN] runs each color's endAction only one time.
-    public HashSet<String> getUniqueColors() {
-        HashSet<String> colors = new HashSet<String>();
-        for (Token t : pot) {
-            colors.add(t.getColor());
-        }
-        return colors;
+    public PotSpace getSpace(int index) {
+        if (index < 0 || index >= potSpaces.size()) return null;
+        return potSpaces.get(index);
     }
 
-    // ---------------- END OF DAY ----------------
-
-    // Moves every token back into the bag. Called by EndOfRound.endOfTurn() [NOT WRITTEN].
-    // Uses it.remove() because removing inside a for-each loop crashes the program.
-    public void emptyInto(Bag b) {
-        Iterator<Token> it = pot.iterator();
-        while (it.hasNext()) {
-            b.add(it.next());
-            it.remove();
-        }
+    public int getPrice(String color, int value) {
+        int[] prices = shopPrices.get(color);
+        if (prices == null) return 999;
+        if (value == 1) return prices[0];
+        if (value == 2 && prices.length > 1) return prices[1];
+        if (value == 4 && prices.length > 2) return prices[2];
+        return 999;
     }
 
-    // ---------------- GETTERS ----------------
-
-    // The most recent token, or null if the pot is empty (check for null before using).
-    public Token getLastToken() {
-        if (pot.isEmpty()) {
-            return null;
-        }
-        return pot.get(pot.size() - 1);
+    public boolean inStock(String color, int value) {
+        if (!unlockedColors.contains(color)) return false;
+        String key = color + value;
+        return chipStock.getOrDefault(key, 0) > 0;
     }
 
-    public ArrayList<Token> getPot() {
-        return pot;
-    }
+    public Token buyTokenFromStock(String color, int value) {
+        String key = color + value;
+        int left = chipStock.getOrDefault(key, 0);
+        if (left <= 0) return null;
+        chipStock.put(key, left - 1);
 
-    public int getDropletStart() {
-        return dropletStart;
-    }
-
-    // ---------------- GRAPHICS ----------------
-
-    // Draws the droplet, rat stone, and tokens. Called by Game.drawPlayers() [NOT WRITTEN].
-    // Board is passed in because it holds the PotSpaces, which know where each space is drawn.
-    // [TODO] Droplet and rat stone are placeholder circles; replace when the front end starts.
-    // [TODO] Token.draw() and PotSpace.draw() are still empty, so only the placeholders show.
-    public void draw(Graphics g, Board b) {
-        // Droplet (never drawn past the last space)
-        PotSpace dropletSpace = b.getSpace(Math.min(dropletStart, LAST_SPACE));
-        g.setColor(Color.YELLOW);
-        g.fillOval(dropletSpace.getX(), dropletSpace.getY(), 15, 15);
-
-        // Rat stone, only if this player has one today
-        if (ratSteps > 0) {
-            PotSpace ratSpace = b.getSpace(Math.min(dropletStart + ratSteps, LAST_SPACE));
-            g.setColor(Color.GRAY);
-            g.fillOval(ratSpace.getX(), ratSpace.getY(), 15, 15);
-        }
-
-        // Each token on the space it was placed on
-        for (Token t : pot) {
-            PotSpace space = b.getSpace(t.getSpace());
-            t.draw(g, space.getX(), space.getY());
+        switch (color) {
+            case "Orange": return new OrangeToken();
+            case "Blue":   return new BlueToken(value);
+            case "Red":    return new RedToken(value);
+            case "Yellow": return new YellowToken(value);
+            case "Green":  return new GreenToken(value);
+            case "Purple": return new PurpleToken();
+            case "Black":  return new BlackToken();
+            default:       return null;
         }
     }
+
+    public Player getLeftNeighbor(Player p) {
+        int idx = players.indexOf(p);
+        return players.get((idx - 1 + players.size()) % players.size());
+    }
+
+    public Player getRightNeighbor(Player p) {
+        int idx = players.indexOf(p);
+        return players.get((idx + 1) % players.size());
+    }
+
+    public ArrayList<Player> getPlayers() { return players; }
+    public ArrayList<PotSpace> getPotSpaces() { return potSpaces; }
+    public HashSet<String> getUnlockedColors() { return unlockedColors; }
+    public int getDay() { return day; }
+    public int getStartPlayer() { return startPlayer; }
 }

@@ -1,21 +1,23 @@
-import java.util.*;
+import java.util.Iterator;
+
 public class GreenToken extends Token {
     public GreenToken(int value) {
-        super("garden spider", "green", value);
+        super("Garden Spider", "Green", value);
     }
-    public void addGreenToken(Cauldron c) {
-        if (c.getWhiteTotal() == 7) {
-            int total = 0;
-            Iterator<Token> it = c.tokensOf("green").iterator();
-        while (it.hasNext()) {
-            Token current = it.next();
-            total += current.getValue();
-        }
-        c.moveLastToken(total);
-        }
-    }
+
     @Override
     public void endAction(Player p, Board b) {
-        addGreenToken(p.getCauldron());
+        Cauldron c = p.getCauldron();
+        if (c.getWhiteTotal() == 7) {
+            int sum = 0;
+            Iterator<Token> it = c.getPot().iterator();
+            while (it.hasNext()) {
+                Token t = it.next();
+                if (t.getColor().equalsIgnoreCase("Green")) {
+                    sum += t.getValue();
+                }
+            }
+            c.moveLastToken(sum);
+        }
     }
 }
